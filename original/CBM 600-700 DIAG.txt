@@ -1,0 +1,44 @@
+Information on the CBM 600/700 Diagnostic Cartridge
+by Toast_r, 11/2012
+
+
+EPROM 2764 (324835-01) mapped at $2000
+
+Test Connectors:
+
+User Port 324841-01
+2-23
+4-26
+5-6
+7-9
+8-10
+11-13
+12-14
+15-17
+16-18
+19-21
+20-22
+
+RS 232 C D-SUB 25
+2-3
+6-8-20
+
+Keyboard D-SUB 25
+1-4-5-18
+2-7-11-20
+3-9-25
+6-19-17-14
+8-12-21-15
+10-13-16
+
+Tape Port
+1-(120 Ohm)-3--|<--6  (1N4148)
+4-5
+
+IEEE-488 Port
+1-9
+3-E
+4-11
+5-6
+7-D
+8-C
