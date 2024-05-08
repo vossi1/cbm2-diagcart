@@ -10,8 +10,6 @@ STATICFULL	= 1	; Tests full 2kB static RAM
 ; ***************************************** CONSTANTS *********************************************
 FILL			= $ff		; fills free memory areas with $ff
 SYSTEMBANK		= $0f		; systembank
-; test parameters
-TIMERCYCLES		= $0a70		; compare cycles (determined with a LA and a real P500)
 ; VDC register
 ADR			= $0		; address register
 DATA			= $1		; data register
