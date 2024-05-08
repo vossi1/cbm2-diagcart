@@ -5,7 +5,8 @@
 !ct scr		; standard text/char conversion table -> Screencode (pet = PETSCII, raw)
 !to "cbm2diag.bin", plain
 ; * switches
-;STATICFULL	= 1	; Tests full 2kB static RAM
+STACKINITFIX	= 1	; Fixes stack init 
+STATICFULL	= 1	; Tests full 2kB static RAM
 ; ***************************************** CONSTANTS *********************************************
 FILL			= $ff		; fills free memory areas with $ff
 SYSTEMBANK		= $0f		; systembank
@@ -15,10 +16,21 @@ TIMERCYCLES		= $0a70		; compare cycles (determined with a LA and a real P500)
 ADR			= $0		; address register
 DATA			= $1		; data register
 ; TPI register
+PA			= $0		; port a
+PB			= $1		; port b
 PC			= $2		; port c
+LIR			= $2		; interrupt latch register
+DDPA			= $3		; data direction port a
+DDPB			= $4		; data direction port b
+DDPC			= $5		; data direction port c
 MIR			= $5		; interrupt mask register
 CR			= $6		; control register
+AIR			= $7		; active interrupt register
 ; CIA register
+PRA			= $0		; port a
+PRB			= $1		; port b
+DDRA			= $2		; direction port a
+DDRB			= $3		; direction port b
 TALO			= $4		; timer a lo
 TAHI			= $5		; timer a hi
 TBLO			= $6		; timer b lo
@@ -27,9 +39,15 @@ TOD10			= $8		; tod 10th of seconds
 TODSEC			= $9		; tod seconds
 TODMIN			= $a		; tod monutes
 TODHR			= $b		; tod hours
+SDR			= $c		; serial data register
 ICR			= $d		; interrupt control register
 CRA			= $e		; control register b
 CRB			= $f		; control register b
+; ACIA register
+DRSN			= $0		; data register
+SRSN			= $1		; status register
+CDR			= $2		; command register
+CTR			= $3		; control register
 ; SID register
 OSC1			= $00		; oscillator 1
 OSC2			= $07		; oscillator 2
@@ -41,11 +59,19 @@ PWHI			= $03		; pulse width hi
 OSCCTL			= $04		; oscillator control
 ATKDCY			= $05		; attack/decay
 SUSREL			= $06		; sustain/release
+FCLOW			= $15		; filter low
+FCHI			= $16		; filter high
 RESFILT			= $17		; resonance/filter
 VOLUME			= $18		; volume
 ; ***************************************** ADDRESSES *********************************************
 !addr CodeBank		= $00		; code bank register
 !addr IndirectBank	= $01		; indirect bank register
+!addr MemZero		= $0000
+!addr databits		= $0010		; databits dram test bad
+!addr tempirq		= $0104		; temp irq handler
+!addr cinv		= $300		; irq vector
+!addr cbinv		= $302		; irq break vector
+!addr nminv		= $304		; nmi vector
 !addr ScreenRAM		= $d000		; Screen RAM
 !addr vdc		= $d800		; VDC
 !addr sid		= $da00		; SID
@@ -54,60 +80,20 @@ VOLUME			= $18		; volume
 !addr tpi1		= $de00		; TPI1
 !addr tpi2		= $df00		; TPI2
 ; ***************************************** ZERO PAGE *********************************************
+!addr RamEnd		= $02		; last dram bank +1
+!addr TestBank		= $03		; dram test bank
 !addr machinetype	= $04		; machine type: $40=LP, $80=HP
 !addr temp1		= $05		; temp
+!addr temp5		= $06		; temp irq sub
+!addr temp4		= $07		; temp irq sub
 !addr temp2		= $08		; temp
+!addr temp3		= $09		; temp
 !addr pointer1		= $0a		; 16bit pointer
 !addr romsize		= $0c		; rom size in pages
+!addr unused		= $28		; never used
 !addr pointer_screen	= $2a		; 16bit pointer screen text position
 !addr pointer_text	= $2c		; 16bit pointer text
 !addr pointer_screen2	= $2e		; 16bit pointer screen text position
- 
-!addr check		= $10		; check variable ********* PATCHED ********
-!addr error		= $11		; error ********* PATCHED ********
-!addr bank_state	= $15 ; - $18	; bank faulty state (max 4 banks)
-!addr bank_state_full	= $0015
-!addr ext_color		= $1b		; exterior color
-!addr screen_pointer	= $1c		; 16bit pointer screen
-!addr cycles		= $21 ; - $24	; cycles counter decimal for 8 digits
-!addr end_high		= $25		; pages to test
-!addr faulty_bits	= $27		; faulty test bits
-!addr storage1		= $28		; temp storage
-!addr storage2		= $29		; temp storage
-!addr last_rambank	= $30		; last RAM bank
-!addr copy_source_bank	= $32		; copy source bank
-!addr copy_source	= $33		; 16bit copy source address
-!addr counter		= $35		; counter
-!addr color_pointer	= $36		; 16bit colorpointer
-!addr test_mask		= $3a		; test mask (to test only 4 bit in color RAM)	
-!addr screen_pos	= $3b		; screen pos rom checksums
-!addr temp_count_sum	= $3c		; temp rom checksums
-!addr temp6		= $3f		; temp6	
-!addr start_high	= $41		; test start address highbyte	
-!addr start_low		= $42		; test start address lowbyte	
-!addr temp4		= $45		; temp
-!addr text		= $46		; text to print
-!addr temp7		= $48		; temp timer test
-!addr temp5		= $49		; temp
-!addr banks_counter	= $4a		; counter for banks to test in a cycle
-!addr temp_bank		= $4b		; temp bank
-!addr temp_dec_value	= $4c		; temp timertest
-!addr temp_irq		= $4d		; temp irq
-!addr pointer2		= $4e		; 16bit pointer
-!addr pointer3		= $50		; 16bit pointer
-!addr time1_hours	= $b2		; time 1 hours
-!addr time1_minutes	= $b3		; time 1 minutes
-!addr time1_seconds	= $b4		; time 1 seconds
-!addr time1_10th	= $b5		; time 1 10th seconds
-!addr time2_hours	= $b6		; time 2 hours
-!addr time2_minutes	= $b7		; time 2 minutes
-!addr time2_seconds	= $b8		; time 2 seconds
-!addr time2_10th	= $b9		; time 2 10th seconds
-!addr tod_count1	= $ba		; tod test counter
-!addr tod_count2	= $bb		; tod test counter
-!addr tod_count3	= $bc		; tod test counter
-!addr tod_state		= $bd		; TOD state - $00 ok, $ff = bad
-!addr timer_state	= $bd		; timer state - $00 = ok
 ; ***************************************** ZONE MAIN *********************************************
 !zone main
 !initmem FILL
@@ -118,7 +104,11 @@ VOLUME			= $18		; volume
 Start:	sei
 	lda #SYSTEMBANK
 	sta IndirectBank
-	ldx $ff				; #$ff    ************ BUG ???????????????
+!ifdef STACKINITFIX{
+	ldx #$ff			; fix stack init 		******** PATCHED ********
+} else{
+	ldx $ff				; ************ BUG ???????????????
+}
 	txs				; reset stack pointer
 	cld
 	ldy #$11			; 18 VDC register
@@ -170,7 +160,7 @@ clrlp:  sta ScreenRAM,x
 	bne clrlp
 ; check ram banks
 	ldx #$03			; minimum 2 banks / 128kB: testbank = 3
-	stx $02				; store last ram bank +1
+	stx RamEnd			; store last ram bank +1
 	stx IndirectBank		; indirect bank=3
 	ldx #$24			; title text length
 	lda #$60			; test at address $xx60
@@ -185,7 +175,7 @@ ckramlp:sta (temp2),y			; y already 0
 	bne ckramlp
 	beq ram128
 bank3pr:lda #$05			; 4 banks / 256kB
-	sta $02				; store last ram bank +1
+	sta RamEnd			; store last ram bank +1
 	bne ram256			; jump always
 ram128: lda machinetype			; check lp/hp
 	bmi hp128			; -> hp
@@ -242,18 +232,18 @@ przplp:	lda TextZeropage,x		; print "ZEROPAGE"
 	ldy #$03			; start at $0003
 zplp:	ldx #$00
 zpcntlp:txa
-	sta $0000,y			; zeropage
-	eor $0000,y
+	sta MemZero,y			; zeropage
+	eor MemZero,y
 	bne zpbad			; -> bad
 	inx 
 	bne zpcntlp			; count byte up
 	tya
-	sta $0000,y			; store address for check
+	sta MemZero,y			; store address for check
 	iny
 	bne zplp			; next byte
 	ldy #$03			; start at $0003
 zpchklp:tya
-	cmp $0000,y			; check stored address values
+	cmp MemZero,y			; check stored address values
 	bne zpbad
 	iny
 	bne zpchklp
@@ -272,9 +262,9 @@ zpbadlp:lda TextBad,x			; zeropage bad
 	dex
 	bne zpbadlp
 endless:lda #$01			; shift all bits in faulty byte
-zpshft:	sta $0000,y
+zpshft:	sta MemZero,y
 	eor #$ff
-	sta $0000,y
+	sta MemZero,y
 	asl
 	bcc zpshft
 	jmp endless
@@ -362,28 +352,28 @@ MainTest:
 	lda #>(ScreenRAM+5*80)
 	sta pointer_screen+1
 	lda #$10
-	sta $28
+	sta unused			; never used
 	jsr TestVideoRam
 	jsr TestRoms
 	jsr TestKeyboard
 	jsr TestRS232
-	jsr l23b4
-	jsr l2421
-	jsr l24d7
-	jsr l2579
-	jsr l25e5
-	jsr l26bf
-	jsr l2763
-	lda #$05
-	jsr l28e0
-	jsr l28a8
+	jsr TestCassette
+	jsr TestUserPort
+	jsr TestIeeePort
+	jsr TestTimers
+	jsr TestInterrupt
+	jsr TestDram
+	jsr TestSoundchip
+	lda #5
+	jsr Delay			; delay sub 5x
+	jsr IncCounterClearScreen
 	jmp TestZeropage
 ; ----------------------------------------------------------------------------
 ; test video ram
 TestVideoRam:
 	ldx #>TextVideoRam
 	ldy #<TextVideoRam
-	jsr PrintText			; print text
+	jsr PrintText			; print "video ram"
 	ldy #<ScreenRAM			; set start address
 	sty pointer1
 	lda #>ScreenRAM
@@ -424,17 +414,17 @@ RomChecksums:	!byte $80, $a0, $e0
 TestRoms:
 	ldx #>TextBasicRomL
 	ldy #<TextBasicRomL
-	jsr PrintText
+	jsr PrintText			; print "basic rom l"
 	ldx #$00			; Basic ROM low
 	jsr TestRomx
 	ldx #>TextBasicRomH
 	ldy #<TextBasicRomH
-	jsr PrintText
+	jsr PrintText			; print "basic rom h"
 	ldx #$01			; Basic ROM high
 	jsr TestRomx
 	ldx #>TextKernalRom
 	ldy #<TextKernalRom
-	jsr PrintText
+	jsr PrintText			; print "kernal rom"
 	ldx #$02			; Kernal ROM
 	jsr TestRomx
 	rts
@@ -467,600 +457,606 @@ rombad:	jsr PrintBad			; print bad
 	lda #24
 	jsr AddChars			; add 24 chars
 	lda temp2
-	jsr PrintRomChecksum		; print wrong checksum
+	jsr PrintByteHex		; print wrong checksum
 	jsr AddLine
 	rts
 ; ----------------------------------------------------------------------------
-; test keyboard
+; test keyboard / tpi2
 TestKeyboard:
-	ldx #$2a
-	ldy #$2a
-	jsr PrintText
+	ldx #>TextKeypoard
+	ldy #<TextKeypoard
+	jsr PrintText			; print "keyboard"
 	ldy #$00
-	sty $df03
-	sty $df04
-	sty $df05
+	sty tpi2+DDPA			; all tpi2 ports input
+	sty tpi2+DDPB
+	sty tpi2+DDPC
 	ldx #$01
-l22cd:  lda #$3f
-	sta $df03,x
+kportlp:lda #$3f
+	sta tpi2+DDPA,x			; define bit 0-5 outputs			
 	ldy #$c0
-l22d4:  tya
-	sta $df00,x
-	sta $09
-	lda $df02
-	eor $09
-	and #$3f
-	bne l2326
+kbitlp:	tya
+	sta tpi2+PA,x			; ouput data
+	sta temp3			; remember value
+	lda tpi2+PC
+	eor temp3			; check inputs
+	and #$3f			; isolate bit 0-5
+	bne keybad			; -> keyboard bad
 	iny
-	bne l22d4
+	bne kbitlp			; next bit
 	lda #$00
-	sta $df03,x
+	sta tpi2+DDPA,x			; port input
 	dex
-	bpl l22cd
+	bpl kportlp			; next port
 	lda #$c0
-	sta $df00
-	sta $df01
-	sta $df03
-	sta $df04
+	sta tpi2+PA			; set bit 6+7
+	sta tpi2+PB			; set bit 6+7
+	sta tpi2+DDPA			; define bit 6-7 outputs
+	sta tpi2+DDPB			; define bit 6-7 outputs
 	lda #$30
-	sta $09
+	sta temp3			; test start value for bit 6+7
 	ldy #$07
-l2302:  ldx #$01
-l2304:  lda $09
+k67btlp:ldx #$01
+k67ptlp:lda temp3
 	ora #$3f
-	sta $df00,x
-	lda $df02
-	and #$0f
-	cmp l232c,y
-	bne l2326
+	sta tpi2+PA,x			; set bits
+	lda tpi2+PC
+	and #$0f			; isolate high nibble
+	cmp KeyboardBit67Values,y	; check with table
+	bne keybad			; -> keyboard bad
 	dey
 	dex
-	beq l2304
-	asl $09
+	beq k67ptlp			; next port
+	asl temp3			; shift bit
 	cpy #$ff
-	bne l2302
-	jsr PrintOK
-l2322:  jsr AddLine
+	bne k67btlp			; next bit
+	jsr PrintOK			; print ok
+keyend:	jsr AddLine
 	rts
 ; keyboard bad
-l2326:  jsr PrintBad
-	jmp l2322
+keybad:	jsr PrintBad
+	jmp keyend
 ; ----------------------------------------------------------------------------
-; table
-l232c:  !byte $0a, $0b, $0f, $0d, $05, $04, $00, $03
+; table keyboard bit 6+7 values
+KeyboardBit67Values:	!byte $0a, $0b, $0f, $0d, $05, $04, $00, $03
 ; ----------------------------------------------------------------------------
-; test RS232
+; test RS232 / acia
 TestRS232:
-	ldx #$2a
-	ldy #$5d
-	jsr PrintText
-	sta $dd01
-	lda $dd03
-	ora #$10
-	sta $dd03
-	lda $dd02
-	ora #$19
-	sta $dd02
-	lda #$0e
+	ldx #>TextRS232
+	ldy #<TextRS232
+	jsr PrintText			; print "rs 232"
+	sta acia+SRSN			; $20 (space from PrintText)
+	lda acia+CTR
+	ora #$10			; clock source = baud rate generator
+	sta acia+CTR
+	lda acia+CDR
+	ora #$19			; mode=normal, transmit irq=off, RTS-level =low, enable/DTR=low
+	sta acia+CDR
+	lda #$0e			; baud rate 9600 / test byte count
 	sta temp2
-l2352:  lda $dd03
-	and #$f0
-	ora temp2
-	sta $dd03
+rs232lp:lda acia+CTR
+	and #$f0			; clear baud rate bits
+	ora temp2			; set baud rate
+	sta acia+CTR
 	ldy temp2
-	lda l23a4,y
-	sta $dd00
-	lda $dd02
-	and #$f7
-	sta $dd02
-l236c:  lda $dd01
-	and #$08
-	beq l236c
-	lda $dd00
-	cmp l23a4,y
-	bne l239e
+	lda TestBytesRS232,y		; load test byte from table
+	sta acia+DRSN			; send
+	lda acia+CDR
+	and #$f7			; enable transmit interrupt
+	sta acia+CDR
+rsreclp:lda acia+SRSN			; load status
+	and #$08			; isolate transmit data register full bit
+	beq rsreclp			; wait for full transmit
+	lda acia+DRSN
+	cmp TestBytesRS232,y		; check received data
+	bne aciabad			; acia bad
 	dec temp2
-	bne l2352
-	lda $dd02
-	and #$fe
-	sta $dd02
-	lda $dd01
+	bne rs232lp			; next test byte
+	lda acia+CDR
+	and #$fe			; disable transmit/receive / DTR=high
+	sta acia+CDR
+	lda acia+SRSN
 	tax
-	and #$20
-	beq l239e
+	and #$20			; isolate DCD
+	beq aciabad			; DCD=0 -> acia bad
 	txa
-	and #$40
-	beq l239e
-	sta $dd01
-	jsr PrintOK
-l239a:  jsr AddLine
+	and #$40			; isolate DSR
+	beq aciabad			; DSR=0 -> acia bad
+	sta acia+SRSN
+	jsr PrintOK			; print ok
+endacia:jsr AddLine
 	rts
+; RS232 bad
+aciabad:jsr PrintBad			; print bad
+	jmp endacia
 ; ----------------------------------------------------------------------------
-; 
-l239e:  jsr PrintBad
-	jmp l239a
+; rs232 test table
+TestBytesRS232:	!byte $ff, $55, $aa, $00, $01, $02, $04, $08
+		!byte $10, $20, $40, $80, $ff, $cc, $33, $ff
 ; ----------------------------------------------------------------------------
-; table
-l23a4:  !byte $ff, $55, $aa, $00, $01, $02, $04, $08
-	!byte $10, $20, $40, $80, $ff, $cc, $33, $ff
-; ----------------------------------------------------------------------------
-; 
-l23b4:  ldx #$2a
-	ldy #$6e
-	jsr PrintText
-	lda $de04
+; test cassette port
+TestCassette:
+	ldx #>TextCassette
+	ldy #<TextCassette
+	jsr PrintText			; print "cassette"
+	lda tpi1+DDPB
 	and #$7f
 	ora #$60
-	sta $de04
+	sta tpi1+DDPB
 	ldx #$10
-	stx $dc0d
-	ldx $dc0d
+	stx cia+ICR
+	ldx cia+ICR
 	ldx #$04
-	lda $de01
-l23d2:  ora #$60
-	sta $de01
+	lda tpi1+PB
+caslp:  ora #$60
+	sta tpi1+PB
 	and #$df
 	pha
 	pla
-	sta $de01
+	sta tpi1+PB
 	pha
 	pla
 	dex
-	bne l23d2
+	bne caslp
 	lda #$f5
-l23e5:  adc #$01
-	bne l23e5
-	lda $de01
+caslp2:	adc #$01
+	bne caslp2
+	lda tpi1+PB
 	and #$80
-	bne l241b
-	lda $dc0d
+	bne casbad
+	lda cia+ICR
 	and #$10
-	beq l241b
-	lda $de01
+	beq casbad
+	lda tpi1+PB
 	and #$bf
-	sta $de01
+	sta tpi1+PB
 	lda #$f5
-l2401:  adc #$01
-	bne l2401
-	lda $de01
+caslp3:	adc #$01
+	bne caslp3
+	lda tpi1+PB
 	and #$80
-	beq l241b
-	lda $de04
+	beq casbad
+	lda tpi1+DDPB
 	and #$df
-	sta $de04
-	jsr PrintOK
-l2417:  jsr AddLine
+	sta tpi1+DDPB
+	jsr PrintOK			; print ok
+casend:	jsr AddLine
 	rts
+; cassette bad
+casbad:	jsr PrintBad			; print bad
+	jmp casend
 ; ----------------------------------------------------------------------------
-; 
-l241b:  jsr PrintBad
-	jmp l2417
-l2421:  ldx #$2a
-	ldy #$4c
-	jsr PrintText
+; test user port
+TestUserPort:
+	ldx #>TextUserPort
+	ldy #<TextUserPort
+	jsr PrintText			; print "user port"
 	lda #$ff
-	sta $de00
-	sta $de01
-	sta $de04
-	sta $de03
+	sta tpi1+PA			; all ports output high
+	sta tpi1+PB
+	sta tpi1+DDPB
+	sta tpi1+DDPA
 	lda #$cc
-	sta $dc02
-	sta $dc03
+	sta cia+DDRA
+	sta cia+DDRB
 	eor #$ff
 	sta temp2
-	jsr l249c
-	bcs l24c1
+	jsr usersub
+	bcs userbad
 	lda #$33
-	sta $dc02
-	sta $dc03
+	sta cia+DDRA
+	sta cia+DDRB
 	eor #$ff
 	sta temp2
-	jsr l249c
-	bcs l24c1
-	ldy $dc01
+	jsr usersub
+	bcs userbad
+	ldy cia+PRB
 	nop
-	lda $dc0d
+	lda cia+ICR
 	and #$10
-	beq l24c1
-	lda $dc0e
+	beq userbad
+	lda cia+CRA
 	and #$bf
-	sta $dc0e
+	sta cia+CRA
 	ldx #$10
 	clc
-l246e:  lda #$04
+userlp:	lda #$04
 	adc temp2
 	sta temp2
 	ora #$10
-	sta $de01
+	sta tpi1+PB
 	dex
-	bne l246e
-	lda $dc0d
+	bne userlp
+	lda cia+ICR
 	and #$08
-	beq l24c1
-	lda $dc0c
+	beq userbad
+	lda cia+SDR
 	cmp #$55
-	bne l24c1
-	jsr PrintOK
-l248d:  jsr AddLine
+	bne userbad
+	jsr PrintOK			; print ok
+userend:jsr AddLine
 	lda #$ff
-	sta $de03
-	sta $dc02
-	sta $dc03
+	sta tpi1+DDPA
+	sta cia+DDRA
+	sta cia+DDRB
 	rts
-; ----------------------------------------------------------------------------
-; 
-l249c:  ldy #$0f
-l249e:  ldx #$01
-l24a0:  lda l24c7,y
-	sta $dc00,x
+; user port sub
+usersub:ldy #$0f
+userlp2:ldx #$01
+userlp3:lda TestTable05a,y
+	sta cia+PRA,x
 	nop
-	lda $dc00,x
+	lda cia+PRA,x
 	and temp2
-	sta $09
-	lda l24c7,y
+	sta temp3
+	lda TestTable05a,y
 	and temp2
-	cmp $09
-	bne l24bf
+	cmp temp3
+	bne usrsubx
 	dex
-	bpl l24a0
+	bpl userlp3
 	dey
-	bpl l249e
+	bpl userlp2
 	clc
 	rts
-l24bf:  sec
+usrsubx:sec
 	rts
+; user port bad
+userbad:jsr PrintBad			; print bad
+	jmp userend
 ; ----------------------------------------------------------------------------
-; 
-l24c1:  jsr PrintBad
-	jmp l248d
-l24c7:  brk
-	ora $0a
-l24ca:  !byte $0f, $50, $55, $5a, $5f, $a0, $a5, $aa
-	!byte $af, $f0, $f5, $fa, $ff
+; user port test tables
+TestTable05a:	!byte $00, $05, $0a
+
+TestBytesUser:	!byte $0f, $50, $55, $5a, $5f, $a0, $a5, $aa
+		!byte $af, $f0, $f5, $fa, $ff
 ; ----------------------------------------------------------------------------
-; 
-l24d7:  ldx #$2a
-	ldy #$3b
-	jsr PrintText
+; test ieee port
+TestIeeePort:
+	ldx #>TextIeeePort
+	ldy #<TextIeeePort
+	jsr PrintText			; print "ieee port"
 	lda #$ff
-	sta $dc02
+	sta cia+DDRA
 	lda #$33
-	sta $de03
-	lda $de04
+	sta tpi1+DDPA
+	lda tpi1+DDPB
 	and #$fe
 	ora #$02
-	sta $de04
+	sta tpi1+DDPB
 	ldy #$0f
-l24f4:  lda l24c7,y
-	sta $dc00
-	lda $de00
+ieeelp:	lda TestTable05a,y
+	sta cia+PRA
+	lda tpi1+PA
 	and #$cc
-	cmp l2569,y
-	bne l2563
+	cmp TestBytesIeee,y
+	bne ieeebad
 	dey
-	bpl l24f4
+	bpl ieeelp
 	ldx #$fe
-	stx $dc00
-	lda $de01
+	stx cia+PRA
+	lda tpi1+PB
 	and #$01
-	bne l2563
+	bne ieeebad
 	inx
-	stx $dc00
-	lda $de01
+	stx cia+PRA
+	lda tpi1+PB
 	and #$01
-	beq l2563
-	lda $dc00
+	beq ieeebad
+	lda cia+PRA
 	and #$f7
-	sta $dc00
-	lda $de03
+	sta cia+PRA
+	lda tpi1+DDPA
 	and #$df
 	ora #$10
-	sta $de03
-	lda $de00
+	sta tpi1+DDPA
+	lda tpi1+PA
 	and #$ef
-	sta $de00
-	lda $de00
+	sta tpi1+PA
+	lda tpi1+PA
 	and #$20
-	bne l2563
-	lda $de00
+	bne ieeebad
+	lda tpi1+PA
 	ora #$10
-	sta $de00
-	lda $de00
+	sta tpi1+PA
+	lda tpi1+PA
 	and #$20
-	beq l2563
+	beq ieeebad
 	lda #$00
-	sta $de03
-	sta $de04
-	sta $dc02
-	sta $dc03
-	jsr PrintOK
-l255f:  jsr AddLine
+	sta tpi1+DDPA
+	sta tpi1+DDPB
+	sta cia+DDRA
+	sta cia+DDRB
+	jsr PrintOK			; print ok
+ieeeend:jsr AddLine
 	rts
-;
-l2563:  jsr PrintBad
-	jmp l255f
+; ieee bad
+ieeebad:jsr PrintBad			; print bad
+	jmp ieeeend
 ; ----------------------------------------------------------------------------
-; 
-l2569:  !byte $00, $04, $08, $0c, $40, $44, $48, $4c
-	!byte $80, $84, $88, $8c, $c0, $c4, $c8, $cc
+; ieee test table
+TestBytesIeee:	!byte $00, $04, $08, $0c, $40, $44, $48, $4c
+		!byte $80, $84, $88, $8c, $c0, $c4, $c8, $cc
 ; ----------------------------------------------------------------------------
-; 
-l2579:	ldx #$2a
-	ldy #$b2
-	jsr PrintText
+; test cia timers
+TestTimers:
+	ldx #>TextTimers
+	ldy #<TextTimers
+	jsr PrintText			; print "timers"
 	lda #$80
-	sta $dc0e
-	sta $dc0f
+	sta cia+CRA
+	sta cia+CRB
 	lda #$ff
-	sta $dc05
-	sta $dc04
-	sta $dc07
-	sta $dc06
+	sta cia+TAHI
+	sta cia+TALO
+	sta cia+TBHI
+	sta cia+TBLO
 	lda #$81
-	sta $dc0e
-	sta $dc0f
-	lda #$04
-	jsr l28e0
+	sta cia+CRA
+	sta cia+CRB
+	lda #4
+	jsr Delay			; delay sub 4x
 	lda #$80
-	sta $dc0e
-	sta $dc0f
-	lda $dc05
+	sta cia+CRA
+	sta cia+CRB
+	lda cia+TAHI
 	cmp #$ff
-	beq l25df
-	lda $dc07
+	beq tmrbad
+	lda cia+TBHI
 	cmp #$ff
-	beq l25df
-	cmp $dc05
-	bne l25df
-	lda $dc04
+	beq tmrbad
+	cmp cia+TAHI
+	bne tmrbad
+	lda cia+TALO
 	cmp #$ff
-	beq l25df
-	lda $dc06
+	beq tmrbad
+	lda cia+TBLO
 	cmp #$ff
-	beq l25df
+	beq tmrbad
 	sec
-	sbc $dc04
-	bcs l25d4
+	sbc cia+TALO
+	bcs tmrskp
 	adc #$04
-l25d4:  cmp #$02
-	bcs l25df
-	jsr PrintOK
-l25db:  jsr AddLine
+tmrskp:	cmp #$02
+	bcs tmrbad
+	jsr PrintOK			; print ok
+tmrend:	jsr AddLine
 	rts
-; 
-l25df:  jsr PrintBad
-	jmp l25db
+; timers bad
+tmrbad:	jsr PrintBad			; print bad
+	jmp tmrend
 ; ----------------------------------------------------------------------------
-; 
-l25e5:  ldx #$2a
-	ldy #$c3
-	jsr PrintText
-	lda #$a8
-	ldx #$26
-	stx $0301
-	stx $0303
-	sta $0300
-	sta $0302
-	lda #$bc
-	ldx #$26
-	stx $0305
-	sta $0304
-	lda $de06
+; test interrupt
+TestInterrupt:
+	ldx #>TextInterrupt
+	ldy #<TextInterrupt
+	jsr PrintText			; print "interrupt"
+	lda #<IRQHandler
+	ldx #>IRQHandler
+	stx cinv+1			; set interrrupt handler addresse
+	stx cbinv+1
+	sta cinv
+	sta cbinv
+	lda #<IRQHandler2
+	ldx #>IRQHandler2
+	stx nminv+1			; set nmi handler addresse
+	sta nminv
+	lda tpi1+CR
 	and #$fd
 	ora #$31
-	sta $de06
-	lda $de05
+	sta tpi1+CR
+	lda tpi1+DDPC
 	ora #$04
-	sta $de05
+	sta tpi1+DDPC
 	lda #$01
-	sta $07
+	sta temp4
 	lda #$0e
 	sta temp2
 	ldy #$04
-	jsr l2665
+	jsr irqsub2
 	ldy #$06
-	asl $07
+	asl temp4
 	inc temp2
-	jsr l2665
-	asl $07
+	jsr irqsub2
+	asl temp4
 	lda #$00
-	sta $dc0f
+	sta cia+CRB
 	ldx #$01
-	jsr l2656
+	jsr irqsub1
 	lda #$80
-	sta $dc0f
+	sta cia+CRB
 	ldx #$04
-	jsr l2656
-	jsr l267e
-	lda #$02
-	jsr l28e0
-	jsr l268b
-	jsr PrintOK
+	jsr irqsub1
+	jsr irqsub3
+	lda #2
+	jsr Delay			; delay sub 2x
+	jsr irqsub4
+	jsr PrintOK			; print ok
 	jsr AddLine
 	rts
-; ----------------------------------------------------------------------------
-; 
-l2656:  lda #$00
-	sta $dc0b
-	sta $dc0a
-	sta $dc09
-	stx $dc08
+; irq sub1
+irqsub1:lda #$00
+	sta cia+TODHR
+	sta cia+TODMIN
+	sta cia+TODSEC
+	stx cia+TOD10
 	rts
-; ----------------------------------------------------------------------------
-; 
-l2665:  lda #$ff
-	sta $dc00,y
+; irq sub2
+irqsub2:lda #$ff
+	sta cia+PRA,y
 	iny
 	lda #$02
-	sta $dc00,y
-	jsr l267e
+	sta cia+PRA,y
+	jsr irqsub3
 	ldy temp2
 	lda #$89
-	sta $dc00,y
-	jsr l268b
+	sta cia+PRA,y
+	jsr irqsub4
 	rts
-; ----------------------------------------------------------------------------
-; 
-l267e:  lda $07
+; irq sub3
+irqsub3:lda temp4
 	ora #$80
-	sta $dc0d
+	sta cia+ICR
 	lda #$00
-	sta $06
+	sta temp5
 	cli
 	rts
-; ----------------------------------------------------------------------------
-; 
-l268b:  lda $dc0d
-	and $07
-	beq l268b
+; irq sub4
+irqsub4:lda cia+ICR
+	and temp4
+	beq irqsub4
 	lda #$00
-	sta $dc0d
+	sta cia+ICR
 	sei
-	lda $06
-	beq l269e
+	lda temp5
+	beq irqbad
 	clc
 	rts
-; ----------------------------------------------------------------------------
-; 
-l269e:  pla
+; interrupt bad
+irqbad:	pla
 	pla
-	jsr PrintBad
+	jsr PrintBad			; print bad
 	jsr AddLine
 	sec
 	rts
 ; ----------------------------------------------------------------------------
-; 
-	lda $de07
-	dec $06
+; irq test handler
+IRQHandler:
+	lda tpi1+AIR
+	dec temp5
 	tsx
-	lda $0104,x
+	lda tempirq,x
 	ora #$04
-	sta $0104,x
+	sta tempirq,x
 	pla
 	tay
 	pla
 	tax
 	pla
 	rti
-	dec $06
+IRQHandler2:
+	dec temp5
 	rti
-l26bf:  lda #$01
-	sta $03
-l26c3:  ldx #$2a
-	ldy #$a1
-	jsr PrintText
-	ldy $03
-	lda Number,y
+; ----------------------------------------------------------------------------
+; test dram segments (banks)
+TestDram:
+	lda #$01			; start with bank 1
+	sta TestBank
+banklp:	ldx #>TextDram
+	ldy #<TextDram
+	jsr PrintText			; print "dram segment"
+	ldy TestBank
+	lda HexScreenCode,y		; load bank screencode
 	and #$bf
 	ldy #$0e
-	sta (pointer_screen),y
-	jsr l26e1
-	inc $03
-	lda $03
-	cmp $02
-	bne l26c3
+	sta (pointer_screen),y		; print bank number
+	jsr testbnk
+	inc TestBank
+	lda TestBank
+	cmp RamEnd			; reach last ram bank ?
+	bne banklp			; next bank
 	rts
-; ----------------------------------------------------------------------------
-; 
-l26e1:  lda #$00
-	sta pointer1
+; test dram bank
+testbnk:lda #$00
+	sta pointer1			; set start to $0000
 	sta pointer1+1
-	lda $03
-	sta IndirectBank
-	ldy #$02
-l26ed:  lda #$55
+	lda TestBank
+	sta IndirectBank		; set indirect bank to testbank
+	ldy #$02			; start with $0002
+dramlp:	lda #$55			; test with $55
 	sta (pointer1),y
 	lda (pointer1),y
 	eor #$55
-	bne l2732
-	lda #$aa
+	bne da5bad			; -> bad
+	lda #$aa			; test with $aa
 	sta (pointer1),y
 	lda (pointer1),y
 	eor #$aa
-	bne l2732
+	bne da5bad			; -> bad
 	tya
 	clc
 	adc pointer1+1
-	sta (pointer1),y
-l2707:  iny
-	bne l26ed
+	sta (pointer1),y		; store address+high
+dramct1:iny
+	bne dramlp			; next byte
 	inc pointer1+1
-	bne l26ed
-	lda #$00
+	bne dramlp			; next page
+	lda #$00			; start to $0002
 	sta pointer1+1
 	ldy #$02
-l2714:  tya
+dramlp2:tya
 	clc
 	adc pointer1+1
 	sta temp2
-	lda (pointer1),y
+	lda (pointer1),y		; check stored addresses
 	eor temp2
-	bne l2737
-l2720:  iny
-	bne l2714
+	bne dadrbad			; -> bad
+dramct2:iny
+	bne dramlp2			; next byte
 	inc pointer1+1
-	bne l2714
+	bne dramlp2			; next page
 	lda #$0f
-	sta IndirectBank
-	jsr PrintOK
+	sta IndirectBank		; systembank
+	jsr PrintOK			; print bank ok
 	jsr AddLine
 	rts
-; ----------------------------------------------------------------------------
 ; 
-l2732:  jsr l273c
-	beq l2707
-l2737:  jsr l273c
-	beq l2720
-l273c:  sty pointer1
+da5bad:	jsr drambad
+	beq dramct1			; always continue
+dadrbad:jsr drambad
+	beq dramct2			; always continue
+drambad:sty pointer1
 	sta temp1
 	lda #$0f
-	sta IndirectBank
-	jsr l2835
-	jsr l28f0
+	sta IndirectBank		; systembank
+	jsr PrintDatabits
+	jsr PrintAddress
 	ldy pointer1
-	lda $03
-	sta IndirectBank
+	lda TestBank
+	sta IndirectBank		; indirect = testbank
 	lda #$00
 	sta pointer1
 	rts
 ; ----------------------------------------------------------------------------
-; 
-	lda $03
+; not used
+	lda TestBank
 	sta IndirectBank
 	ldy #$00
-l275b:  clc
+-	clc
 	adc #$01
 	sta (pointer1),y
-	jmp l275b
-l2763:  ldx #$2a
-	ldy #$7f
+	jmp -
+; ----------------------------------------------------------------------------
+; test soundchip
+TestSoundchip:
+	ldx #>TextSoundchip
+	ldy #<TextSoundchip
 	jsr PrintText
 	ldy #$14
-l276c:  lda l27db,y
-	sta $da00,y
+soundlp:lda TestBytesSound,y
+	sta sid+OSC1+FREQLO,y
 	dey
-	bpl l276c
+	bpl soundlp
 	lda #$0f
-	sta $da18
+	sta sid+VOLUME
 	lda #$11
-	jsr l27c1
+	jsr sndsub
 	lda #$21
-	jsr l27c1
+	jsr sndsub
 	lda #$41
-	jsr l27c1
+	jsr sndsub
 	lda #$01
-	sta $da17
+	sta sid+RESFILT
 	lda #$2f
-	sta $da18
+	sta sid+VOLUME
 	lda #$00
-	sta $da05
+	sta sid+OSC1+ATKDCY
 	lda #$f0
-	sta $da06
+	sta sid+OSC1+SUSREL
 	lda #$81
-	sta $da04
+	sta sid+OSC1+OSCCTL
 	ldx #$00
-l27a4:  ldy #$00
-l27a6:  sty $da15
+sndlp2:	ldy #$00
+sndlp3:	sty sid+FCLOW
 	pha
 	pla
 	pha
@@ -1069,32 +1065,31 @@ l27a6:  sty $da15
 	pla
 	iny
 	cpy #$80
-	bne l27a6
-	stx $da16
+	bne sndlp3
+	stx sid+FCHI
 	inx
-	bne l27a4
-	stx $da18
+	bne sndlp2
+	stx sid+VOLUME
 	jsr AddLine
 	rts
-; ----------------------------------------------------------------------------
-; 
-l27c1:  sta $da04
-	sta $da06
-	sta $da12
-	lda #$01
-	jsr l28e0
+; sound test sub
+sndsub:	sta sid+OSC1+OSCCTL
+	sta sid+OSC1+SUSREL
+	sta sid+OSC3+OSCCTL
+	lda #1
+	jsr Delay			; delay sub 1x
 	lda #$00
-	sta $da04
-	sta $da06
-	sta $da12
+	sta sid+OSC1+OSCCTL
+	sta sid+OSC1+SUSREL
+	sta sid+OSC3+OSCCTL
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l27db:  !byte $1c, $d6, $ff, $00, $10, $09, $00, $24
-	!byte $55, $ff, $00, $10, $09, $00, $2b
+; sound test table
+TestBytesSound:	!byte $1c, $d6, $ff, $00, $10, $09, $00, $24
+		!byte $55, $ff, $00, $10, $09, $00, $2b
 ; ----------------------------------------------------------------------------
-; 
-l27ea:  !byte $34, $ff, $00, $10, $09, $00
+; not used
+		!byte $34, $ff, $00, $10, $09, $00
 ; ----------------------------------------------------------------------------
 ; print text 16 chars
 PrintText:
@@ -1113,11 +1108,11 @@ PrintTexta:
 	stx pointer_text+1
 	sty pointer_text
 	tay
-l2805:  lda (pointer_text),y
+prtxalp:lda (pointer_text),y
 	and #$bf
 	sta (pointer_screen2),y
 	dey
-	bpl l2805
+	bpl prtxalp
 	rts
 ; ----------------------------------------------------------------------------
 ; print ok
@@ -1145,21 +1140,22 @@ prbadlp:lda TextBad,y
 	bne prbadlp
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l2835:  jsr l2872
-	jsr PrintBad
-	lda #$18
-	jsr AddChars
-	ldx #$2a
-	ldy #$e5
+; print dram test bad databits
+PrintDatabits:
+	jsr StoreDatabits		; store databits to $0010
+	jsr PrintBad			; print bad
+	lda #24
+	jsr AddChars			; add 24 chars
+	ldx #>TextDatabits
+	ldy #<TextDatabits
 	lda #$08
-	jsr PrintTexta
-	lda #$23
-	jsr AddChars
-	ldx #$00
-	ldy #$10
-	lda #$07
-	jsr PrintTexta
+	jsr PrintTexta			; print "databits"
+	lda #35
+	jsr AddChars			; add 35 chars
+	ldx #>databits
+	ldy #<databits
+	lda #$07			; 8 bits
+	jsr PrintTexta			; print databits
 	rts
 ; ----------------------------------------------------------------------------
 ; add line to screen pointer
@@ -1183,24 +1179,25 @@ AddChars:
 	sta pointer_screen2+1
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l2872:  ldy #$07
-	ldx temp1
-l2876:  txa
+; store databits to $0010
+StoreDatabits:
+	ldy #$07			; 8 bits
+	ldx temp1			; load faulty byte
+dbitlp:	txa
 	lsr
 	tax
-	bcs l2880
-	lda Number
-	bcc l2883
-l2880:  lda Number+1
-l2883:  and #$bf
-	sta $0010,y
+	bcs dbithi
+	lda HexScreenCode		; "0"
+	bcc dbitlo			; always
+dbithi:	lda HexScreenCode+1		; "1"
+dbitlo:	and #$bf
+	sta databits,y			; store bit screen code
 	dey
-	bpl l2876
+	bpl dbitlp			; next bit
 	rts
 ; ----------------------------------------------------------------------------
 ; print rom checksum
-PrintRomChecksum:
+PrintByteHex:
 	pha				; remember byte
 	lsr				; isolate high nibble
 	lsr
@@ -1220,59 +1217,61 @@ alpha:	adc #$00
 	iny				; next position
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l28a8:  ldx #$07
-l28aa:  inc $d060,x
-	lda $d060,x
-	and #$7f
-	cmp #$3a
-	bcc l28c0
+; inc counter, clear screen
+IncCounterClearScreen:
+	ldx #$07
+inc10:  inc ScreenRAM+1*80+16,x
+	lda ScreenRAM+1*80+16,x
+	and #$7f			; non inverse
+	cmp #$3a			; >0
+	bcc clrscr			; no overflow
 	lda #$b0
-	sta $d060,x
+	sta ScreenRAM+1*80+16,x		; inverse 0
 	dex
-	bpl l28aa
-	bmi l28a8
-l28c0:  ldx #$00
-	lda #$20
-l28c4:  sta $d0a0,x
-	sta $d100,x
-	sta $d200,x
-	sta $d300,x
-	sta $d400,x
-	sta $d500,x
-	sta $d600,x
-	sta $d700,x
+	bpl inc10			; next higher number
+	bmi IncCounterClearScreen	; max cycles -> endless loop
+clrscr:	ldx #$00
+	lda #" "			; clear screen from line 3
+clrsclp:sta ScreenRAM+2*80,x
+	sta ScreenRAM+$100,x
+	sta ScreenRAM+$200,x
+	sta ScreenRAM+$300,x
+	sta ScreenRAM+$400,x
+	sta ScreenRAM+$500,x
+	sta ScreenRAM+$600,x
+	sta ScreenRAM+$700,x
 	inx
-	bne l28c4
+	bne clrsclp
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l28e0:  ldx #$ff
+; delay a times
+Delay:  ldx #$ff
 	ldy #$ff
-l28e4:  dex
-	bne l28e4
+delaylp:dex
+	bne delaylp
 	dey
-	bne l28e4
+	bne delaylp
 	sec
-	sbc #$01
-	bne l28e4
+	sbc #$01			; a times
+	bne delaylp
 	rts
 ; ----------------------------------------------------------------------------
-; 
-l28f0:  lda #$2d
-	jsr AddChars
-	ldx #$2a
-	ldy #$d4
-	lda #$08
-	jsr PrintTexta
-	lda #$37
-	jsr AddChars
+; print dram bad address
+PrintAddress:
+	lda #45
+	jsr AddChars			; add 45 chard
+	ldx #>TextAddress
+	ldy #<TextAddress
+	lda #8
+	jsr PrintTexta			; print "address"
+	lda #55
+	jsr AddChars			; add 5 chars
 	lda pointer1+1
-	jsr PrintRomChecksum
-	lda #$39
-	jsr AddChars
+	jsr PrintByteHex		; print low byte
+	lda #57
+	jsr AddChars			; add 57 chars
 	lda pointer1
-	jsr PrintRomChecksum
+	jsr PrintByteHex		; print high byte
 	rts
 ; ************************************* ZONE TABLES ***********************************************
 !zone tables
@@ -1290,7 +1289,7 @@ TextCycles:	!scr "  CYCLE "
 Text000001:	!scr "  000001"
 
 TextZeropage:	!scr " ZEROPAGE        "
-		!scr " STACKPAGE       "
+		!scr " STACKPAGE       "	; not used
 !ifdef STATICFULL{
 TextStaticRam:	!scr " STATIC RAM 2KB  "	; enhanced full 2kB test
 } else{
@@ -1300,24 +1299,24 @@ TextVideoRam:	!scr " VIDEO  RAM      "
 TextBasicRomL:	!scr " BASIC  ROM (L)  "
 TextBasicRomH:	!scr " BASIC  ROM (H)  "
 TextKernalRom:	!scr " KERNAL ROM      "
-		!scr " KEYBOARD        "
-		!scr " IEEE PORT       "
-		!scr " USER PORT       "
-		!scr " RS-232          "
-		!scr " CASSETTE        "
-		!scr " SOUND CHIP      "
+TextKeypoard:	!scr " KEYBOARD        "
+TextIeeePort:	!scr " IEEE PORT       "
+TextUserPort:	!scr " USER PORT       "
+TextRS232:	!scr " RS-232          "
+TextCassette:	!scr " CASSETTE        "
+TextSoundchip:	!scr " SOUND CHIP      "
 		!scr " VDC   CHIP      "
-		!scr " DRAM SEGMENT    "
-		!scr " TIMERS          "
-		!scr " INTERRUPT       "
-		!scr " ADDRESS         "
-		!scr " DATABITS:       "
+TextDram:	!scr " DRAM SEGMENT    "
+TextTimers:	!scr " TIMERS          "
+TextInterrupt:	!scr " INTERRUPT       "
+TextAddress:	!scr " ADDRESS         "
+TextDatabits:	!scr " DATABITS:       "
 
 TextOK:	!scr " OK "
 
 TextBad:!scr " BAD"
 
-Number:	!scr "0123456789ABCDEF"
+HexScreenCode:	!scr "0123456789ABCDEF"
 
 	!byte $aa, $aa
 ; ----------------------------------------------------------------------------
