@@ -7,6 +7,8 @@
 ; * switches
 STACKINITFIX	= 1	; Fixes stack init 
 STATICFULL	= 1	; Tests full 2kB static RAM
+SHOWBAUD	= 1	; Show Baud rate
+VOSSI		= 1	; show vossi title
 ; ***************************************** CONSTANTS *********************************************
 FILL			= $ff		; fills free memory areas with $ff
 SYSTEMBANK		= $0f		; systembank
@@ -160,7 +162,11 @@ clrlp:  sta ScreenRAM,x
 	ldx #$03			; minimum 2 banks / 128kB: testbank = 3
 	stx RamEnd			; store last ram bank +1
 	stx IndirectBank		; indirect bank=3
-	ldx #$24			; title text length
+!ifdef VOSSI {
+	ldx #42				; title text length
+} else{
+	ldx #36				; title text length
+}
 	lda #$60			; test at address $xx60
 	sta temp2
 	lda #$a5			; test value
@@ -823,7 +829,7 @@ tmrend:	jsr AddLine
 tmrbad:	jsr PrintBad			; print bad
 	jmp tmrend
 ; ----------------------------------------------------------------------------
-; test cia interrupts
+; test cia interrupt
 TestInterrupt:
 	ldx #>TextInterrupt
 	ldy #<TextInterrupt
@@ -1273,16 +1279,18 @@ PrintAddress:
 ; ************************************* ZONE TABLES ***********************************************
 !zone tables
 ; messages
+!ifdef VOSSI {
+TitleHP256:	!scr " COMMODORE CBM 700 (256K) DIAGNOSTIC VOSSI"
+TitleHP128:	!scr " COMMODORE CBM 700 (128K) DIAGNOSTIC VOSSI"
+TitleLP256:	!scr " COMMODORE CBM 600 (256K) DIAGNOSTIC VOSSI"
+TitleLP128:	!scr " COMMODORE CBM 600 (128K) DIAGNOSTIC VOSSI"
+} else{
 TitleHP256:	!scr " COMMODORE CBM 700 (256K) DIAGNOSTIC"
-
 TitleHP128:	!scr " COMMODORE CBM 700 (128K) DIAGNOSTIC"
-
 TitleLP256:	!scr " COMMODORE CBM 600 (256K) DIAGNOSTIC"
-
 TitleLP128:	!scr " COMMODORE CBM 600 (128K) DIAGNOSTIC"
-
+}
 TextCycles:	!scr "  CYCLE "
-
 Text000001:	!scr "  000001"
 
 TextZeropage:	!scr " ZEROPAGE        "
@@ -1299,7 +1307,11 @@ TextKernalRom:	!scr " KERNAL ROM      "
 TextKeypoard:	!scr " KEYBOARD        "
 TextIeeePort:	!scr " IEEE PORT       "
 TextUserPort:	!scr " USER PORT       "
+!ifdef SHOWBAUD{
+TextRS232:	!scr " RS232 9600 baud "
+} else{
 TextRS232:	!scr " RS-232          "
+}
 TextCassette:	!scr " CASSETTE        "
 TextSoundchip:	!scr " SOUND CHIP      "
 		!scr " VDC   CHIP      "
@@ -1310,7 +1322,6 @@ TextAddress:	!scr " ADDRESS         "
 TextDatabits:	!scr " DATABITS:       "
 
 TextOK:	!scr " OK "
-
 TextBad:!scr " BAD"
 
 HexScreenCode:	!scr "0123456789ABCDEF"
