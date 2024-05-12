@@ -1,11 +1,14 @@
 ; cbm2 diagnostic-cart 324835-01
-; disassembled by Vossi 05/2024, fixed/enhanced 05/2024
+; disassembled by Vossi 05/2024
+; v. 1.0 fixed/enhanced 05/2024
+; v. 1.1 added dram bad flag to prevent printing ok if last byte ok 05/2024
 ; assemble with ACME
 !cpu 6502
 !ct scr		; standard text/char conversion table -> Screencode (pet = PETSCII, raw)
 !to "cbm2diag.bin", plain
 ; * switches
 STACKINITFIX	= 1	; Fixes stack init 
+DRAMBADFIX	= 1	; Fixes dram ok if last byte in segment is ok
 STATICFULL	= 1	; Tests full 2kB static RAM
 SHOWBAUD	= 1	; Show Baud rate
 VOSSI		= 1	; show vossi title
@@ -90,6 +93,7 @@ VOLUME			= $18		; volume
 !addr temp3		= $09		; temp
 !addr pointer1		= $0a		; 16bit pointer
 !addr romsize		= $0c		; rom size in pages
+!addr dram_bad_flag	= $0f		; flag dram in section bad
 !addr unused		= $28		; never used
 !addr pointer_screen	= $2a		; 16bit pointer screen text position
 !addr pointer_text	= $2c		; 16bit pointer text
@@ -163,7 +167,7 @@ clrlp:  sta ScreenRAM,x
 	stx RamEnd			; store last ram bank +1
 	stx IndirectBank		; indirect bank=3
 !ifdef VOSSI {
-	ldx #42				; title text length
+	ldx #57				; title text length
 } else{
 	ldx #36				; title text length
 }
@@ -962,6 +966,9 @@ banklp:	ldx #>TextDram
 	rts
 ; test dram bank
 testbnk:lda #$00
+!ifdef DRAMBADFIX{
+	sta dram_bad_flag		; clear section bad flag	******** PATCHED ********
+}
 	sta pointer1			; set start to $0000
 	sta pointer1+1
 	lda TestBank
@@ -1001,8 +1008,12 @@ dramct2:iny
 	bne dramlp2			; next page
 	lda #$0f
 	sta IndirectBank		; systembank
+!ifdef DRAMBADFIX{
+	lda dram_bad_flag
+	bne drnotok			; skip if dram already bad	******** PATCHED ********
+}
 	jsr PrintOK			; print bank ok
-	jsr AddLine
+drnotok:jsr AddLine
 	rts
 ; 
 da5bad:	jsr drambad
@@ -1012,6 +1023,9 @@ dadrbad:jsr drambad
 drambad:sty pointer1
 	sta temp1
 	lda #$0f
+!ifdef DRAMBADFIX{
+	sta dram_bad_flag		; set bad flag		******** PATCHED ********
+}
 	sta IndirectBank		; systembank
 	jsr PrintDatabits
 	jsr PrintAddress
@@ -1280,10 +1294,10 @@ PrintAddress:
 !zone tables
 ; messages
 !ifdef VOSSI {
-TitleHP256:	!scr " COMMODORE CBM 700 (256K) DIAGNOSTIC VOSSI"
-TitleHP128:	!scr " COMMODORE CBM 700 (128K) DIAGNOSTIC VOSSI"
-TitleLP256:	!scr " COMMODORE CBM 600 (256K) DIAGNOSTIC VOSSI"
-TitleLP128:	!scr " COMMODORE CBM 600 (128K) DIAGNOSTIC VOSSI"
+TitleHP256:	!scr " COMMODORE CBM 700 (256K) DIAGNOSTIC VOSSI V. 1.1 05/2024"
+TitleHP128:	!scr " COMMODORE CBM 700 (128K) DIAGNOSTIC VOSSI V. 1.1 05/2024"
+TitleLP256:	!scr " COMMODORE CBM 600 (256K) DIAGNOSTIC VOSSI V. 1.1 05/2024"
+TitleLP128:	!scr " COMMODORE CBM 600 (128K) DIAGNOSTIC VOSSI V. 1.1 05/2024"
 } else{
 TitleHP256:	!scr " COMMODORE CBM 700 (256K) DIAGNOSTIC"
 TitleHP128:	!scr " COMMODORE CBM 700 (128K) DIAGNOSTIC"
